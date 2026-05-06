@@ -1,0 +1,43 @@
+# macOS
+.DS_Store
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Local secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+
+# Kubernetes / Helm artifacts
+charts/*/charts/
+charts/*/Chart.lock
+*.tgz
+
+# Terraform (if/when added)
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!*.example.tfvars
+
+# kubeconfig dumps (never commit)
+kubeconfig
+*.kubeconfig
+
+# Build / scratch
+.cache/
+tmp/
+dist/
+
+# Logs
+*.log
