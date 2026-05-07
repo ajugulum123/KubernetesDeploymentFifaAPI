@@ -46,6 +46,10 @@ template:
         # Pin to a SHA tag in production for reproducibility. Use :latest while iterating.
         image: ghcr.io/ajugulum123/fifa-runner:latest
         imagePullPolicy: Always
+        # The base image's CMD is /bin/bash. The chart only injects the runner entrypoint
+        # into its DEFAULT container template; the moment we provide our own container
+        # spec, ARC keeps it as-is. So we have to call run.sh ourselves.
+        command: ["/home/runner/run.sh"]
 
         # Resource requests/limits keep scheduling predictable. Tune based on observed
         # job load. Builds and tests for FIFA_API_APP comfortably fit in 1 CPU / 2Gi.

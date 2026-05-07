@@ -10,7 +10,7 @@
 #
 # We do NOT install a Docker daemon. Builds happen in BuildKit, jobs talk to it over gRPC.
 
-ARG ARC_RUNNER_VERSION=2.331.0
+ARG ARC_RUNNER_VERSION=2.334.0
 FROM ghcr.io/actions/actions-runner:${ARC_RUNNER_VERSION}
 
 USER root
