@@ -105,26 +105,6 @@ A push to `main` on the app repo triggers:
 
 Throughout, Prometheus scrapes the ARC controller, the runner pods and the API itself. Grafana shows queue depth, runner pool size, request rate, latency p99 and 5xx rate side by side.
 
-## Status
-
-| Phase | Deliverable | State |
-|---|---|---|
-| 1 | Local k3d cluster | Done |
-| 2 | GitHub App, ARC controller, runner scale set | Installed (perm fix in flight) |
-| 3 | Containerize FIFA_API_APP | Done. Multi-stage Dockerfile, tested locally |
-| 4 | Tests | Done. 19 vitest cases covering JWT and CSV loader |
-| 5 | Custom runner image | Dockerfile and build workflow ready |
-| 6 | App k8s manifests, RBAC, NetworkPolicy, Ingress | Done |
-| 7 | CI workflow (typecheck, test, image build, gitleaks, Trivy) | Done |
-| 8 | CD workflow (build, push, set image, rollout status) | Done |
-| 9 | Autoscaling values | Done. minRunners=0, maxRunners=5 |
-| 10 | Shared cache (MinIO) | Done |
-| 11 | Production env + manual approval | Done |
-| 12 | PR previews | Done |
-| 13 | Observability (Prometheus, Grafana, alerts) | Done |
-| 14 | Security policies (NetworkPolicy, ResourceQuota, Trivy, gitleaks, OIDC stub) | Done |
-| 15 | Documentation | This file plus `docs/` |
-
 ## Layout
 
 ```
