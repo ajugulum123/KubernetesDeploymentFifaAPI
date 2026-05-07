@@ -17,9 +17,14 @@ spec:
   policyTypes: [Ingress]
   ingress:
     - from:
+        # Match by an explicit label on the arc-runners namespace.
+        # k3s NetworkPolicy enforcement (kube-router NPC) appears to have
+        # trouble matching against the K8s-managed kubernetes.io/metadata.name
+        # label, so we label the namespace ourselves and select on that.
+        # See clusters/local-k3d/README.md for the bootstrap command.
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: arc-runners
+              network/zone: runners
       ports:
         - protocol: TCP
           port: 1234

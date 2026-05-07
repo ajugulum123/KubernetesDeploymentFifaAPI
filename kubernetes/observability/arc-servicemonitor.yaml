@@ -1,5 +1,24 @@
-# Scrapes the ARC controller's metrics endpoint. The controller exposes /metrics
-# on port 8080 (default for the gha-runner-scale-set-controller chart).
+# Scrapes the ARC controller's metrics endpoint. The chart does not create a
+# metrics Service for us, so we define a tiny ClusterIP Service first.
+apiVersion: v1
+kind: Service
+metadata:
+  name: arc-controller-metrics
+  namespace: arc-systems
+  labels:
+    app.kubernetes.io/name: gha-rs-controller
+    app.kubernetes.io/component: metrics
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: gha-rs-controller
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+---
+# Scrapes the ARC controller's metrics endpoint.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:

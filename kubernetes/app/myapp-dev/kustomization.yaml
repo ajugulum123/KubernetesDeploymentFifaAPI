@@ -11,12 +11,18 @@ resources:
   - deployment.yaml
   - service.yaml
   - ingress.yaml
-  - networkpolicy.yaml
+  # networkpolicy.yaml is intentionally NOT in the default local k3d bundle.
+  # k3d's bundled NetworkPolicy enforcement has namespaceSelector quirks that
+  # block Prometheus and Traefik traffic during the local demo. Apply explicitly
+  # on a production-like cluster:
+  #   kubectl apply -f kubernetes/app/myapp-dev/networkpolicy.yaml
 
 # secret.example.yaml is intentionally NOT in resources. The real Secret is created
 # out-of-band by the operator or by the deploy workflow with values from GitHub
 # Environment secrets, never committed to git.
 
-commonLabels:
-  app.kubernetes.io/part-of: fifa-cicd-platform
-  environment: dev
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/part-of: fifa-cicd-platform
+      environment: dev

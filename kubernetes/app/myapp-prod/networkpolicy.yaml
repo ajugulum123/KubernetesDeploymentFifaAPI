@@ -9,6 +9,17 @@ spec:
       app.kubernetes.io/name: fifa-api
   policyTypes: [Ingress, Egress]
   ingress:
+    # Prometheus scrapes /metrics through the Service on the same HTTP port.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              network/zone: monitoring
+      ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 4000
+
     - from:
         - namespaceSelector:
             matchLabels:
@@ -17,6 +28,8 @@ spec:
             matchLabels:
               app.kubernetes.io/name: traefik
       ports:
+        - protocol: TCP
+          port: 80
         - protocol: TCP
           port: 4000
   egress:

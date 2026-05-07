@@ -8,7 +8,12 @@ resources:
   - serviceaccount.yaml
   - deployment.yaml
   - service.yaml
-  - networkpolicy.yaml
+  # networkpolicy.yaml is intentionally NOT in the default kustomize bundle.
+  # See buildkit/README.md "NetworkPolicy and k3d" for the rationale. Apply it
+  # explicitly on a non-k3d cluster:
+  #   kubectl apply -f kubernetes/buildkit/networkpolicy.yaml
 
-commonLabels:
-  app.kubernetes.io/part-of: fifa-cicd-platform
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/part-of: fifa-cicd-platform

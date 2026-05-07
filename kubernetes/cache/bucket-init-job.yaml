@@ -20,8 +20,10 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: mc
-          image: minio/mc:RELEASE.2025-02-07T23-21-09Z
+          image: minio/mc:latest
           env:
+            - name: HOME
+              value: /tmp
             - name: MC_HOST_minio
               valueFrom:
                 secretKeyRef:
