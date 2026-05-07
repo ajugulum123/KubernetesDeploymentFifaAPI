@@ -1,0 +1,91 @@
+# Rootless BuildKit Deployment.
+# Runs as UID 1000, no privileged flag, no DinD, no Docker daemon.
+# Listens on tcp://0.0.0.0:1234. Exposed cluster-internally via the buildkitd Service.
+# Locked down to arc-runners ingress only via NetworkPolicy.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: buildkitd
+  namespace: buildkit
+  labels:
+    app.kubernetes.io/name: buildkit
+    app.kubernetes.io/component: daemon
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: buildkit
+      app.kubernetes.io/component: daemon
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: buildkit
+        app.kubernetes.io/component: daemon
+      annotations:
+        container.apparmor.security.beta.kubernetes.io/buildkitd: unconfined
+    spec:
+      serviceAccountName: buildkitd
+      automountServiceAccountToken: false
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        fsGroup: 1000
+        seccompProfile:
+          type: Unconfined
+      containers:
+        - name: buildkitd
+          image: moby/buildkit:v0.18.2-rootless
+          imagePullPolicy: IfNotPresent
+          args:
+            - --addr
+            - unix:///run/user/1000/buildkit/buildkitd.sock
+            - --addr
+            - tcp://0.0.0.0:1234
+            - --oci-worker-no-process-sandbox
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: false
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            seccompProfile:
+              type: Unconfined
+          ports:
+            - name: grpc
+              containerPort: 1234
+              protocol: TCP
+          readinessProbe:
+            exec:
+              command: [buildctl, debug, workers]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: [buildctl, debug, workers]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          volumeMounts:
+            - name: buildkitd
+              mountPath: /home/user/.local/share/buildkit
+            - name: runtime
+              mountPath: /run/user/1000/buildkit
+      volumes:
+        - name: buildkitd
+          emptyDir:
+            sizeLimit: 10Gi
+        - name: runtime
+          emptyDir:
+            medium: Memory
+            sizeLimit: 256Mi

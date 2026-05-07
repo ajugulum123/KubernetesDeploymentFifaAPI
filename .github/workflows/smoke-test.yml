@@ -1,0 +1,60 @@
+name: Smoke test the runner
+
+on:
+  workflow_dispatch:
+    inputs:
+      sleep_seconds:
+        description: "How long the job should sleep before exiting. Useful for watching the pod lifecycle."
+        required: false
+        default: "5"
+  push:
+    paths:
+      - ".github/workflows/smoke-test.yml"
+
+jobs:
+  hello-from-runner:
+    name: hello-from-runner
+    runs-on: fifa-runners
+    timeout-minutes: 5
+    steps:
+      - name: Print runner identity
+        run: |
+          set -euo pipefail
+          echo "hostname:    $(hostname)"
+          echo "whoami:      $(whoami)"
+          echo "pwd:         $(pwd)"
+          echo "uname:       $(uname -a)"
+          echo "ip route:"
+          ip route 2>/dev/null | head -5 || true
+          echo "actions runner version: ${RUNNER_VERSION:-unknown}"
+          echo "GITHUB_RUN_ID:           ${GITHUB_RUN_ID}"
+          echo "GITHUB_RUN_NUMBER:       ${GITHUB_RUN_NUMBER}"
+          echo "RUNNER_NAME:             ${RUNNER_NAME}"
+          echo "RUNNER_OS:               ${RUNNER_OS}"
+          echo "RUNNER_ARCH:             ${RUNNER_ARCH}"
+
+      - name: Probe common tools
+        run: |
+          set -uo pipefail
+          for cmd in node npm git curl jq kubectl docker buildctl; do
+            if command -v "$cmd" >/dev/null 2>&1; then
+              echo "have:    $cmd ($($cmd --version 2>&1 | head -1))"
+            else
+              echo "missing: $cmd"
+            fi
+          done
+
+      - name: Confirm we are on a self-hosted runner
+        run: |
+          if [ "${RUNNER_ENVIRONMENT:-}" = "self-hosted" ] || [ -n "${RUNNER_ENVIRONMENT:-}" ] && [ "${RUNNER_ENVIRONMENT}" != "github-hosted" ]; then
+            echo "OK. Running on self-hosted runner."
+          else
+            echo "ERROR. This job did not land on the self-hosted runner pool."
+            echo "RUNNER_ENVIRONMENT=${RUNNER_ENVIRONMENT:-<unset>}"
+            exit 1
+          fi
+
+      - name: Sleep for ${{ inputs.sleep_seconds || '5' }} seconds
+        run: |
+          sleep ${{ inputs.sleep_seconds || '5' }}
+          echo "Done. The pod should now be torn down by ARC."

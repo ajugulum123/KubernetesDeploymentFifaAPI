@@ -1,0 +1,39 @@
+# Same shape as myapp-dev/rbac.yaml: app-deployer in arc-runners gets exactly the
+# verbs+resources it needs in myapp-prod. No more, no less.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: app-deployer
+  namespace: myapp-prod
+  labels:
+    app.kubernetes.io/name: app-deployer
+rules:
+  - apiGroups: [""]
+    resources: [configmaps, services, serviceaccounts]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [get, create, update, patch]
+  - apiGroups: [apps]
+    resources: [deployments, replicasets]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [pods, pods/log, pods/status, events]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: app-deployer
+  namespace: myapp-prod
+subjects:
+  - kind: ServiceAccount
+    name: app-deployer
+    namespace: arc-runners
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: app-deployer

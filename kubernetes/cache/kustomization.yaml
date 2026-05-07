@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: cache
+
+resources:
+  - namespace.yaml
+  - minio.yaml
+  - bucket-init-job.yaml
+  - networkpolicy.yaml
+
+# secret.example.yaml is intentionally NOT in resources. Real Secret is created
+# out-of-band, see secret.example.yaml for the exact kubectl create secret command.
+
+commonLabels:
+  app.kubernetes.io/part-of: fifa-cicd-platform

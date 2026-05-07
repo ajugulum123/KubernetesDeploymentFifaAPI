@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - arc-servicemonitor.yaml
+  - fifa-api-servicemonitor.yaml
+  - prometheus-rules.yaml
+  - grafana-dashboard-fifa-cicd.yaml
+
+# Apply with:
+#   kubectl apply -k kubernetes/observability
+# Requires kube-prometheus-stack to be installed first:
+#   helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
+#     -n monitoring --create-namespace \
+#     --values KubernetesDeploymentFifaAPI/helm-values/kube-prometheus-stack.yaml

@@ -1,0 +1,21 @@
+# Scrape /metrics on the fifa-api Service in myapp-dev and myapp-prod.
+# The app exposes Prometheus metrics via prom-client + express-prom-bundle
+# (added to FIFA_API_APP/src/server.ts).
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: fifa-api
+  namespace: myapp-dev
+  labels:
+    app.kubernetes.io/name: fifa-api
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fifa-api
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+  namespaceSelector:
+    matchNames: [myapp-dev, myapp-prod]

@@ -1,0 +1,60 @@
+# What the runner SA (arc-runners/app-deployer) can do inside myapp-dev.
+# Least-privilege: enough to deploy the app and watch the rollout, nothing else.
+# No cluster-scope verbs. No persistentvolumeclaims, no nodes, no namespaces, no rbac edit.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: app-deployer
+  namespace: myapp-dev
+  labels:
+    app.kubernetes.io/name: app-deployer
+rules:
+  # apply, patch, get the workload primitives the CD workflow touches
+  - apiGroups: [""]
+    resources:
+      - configmaps
+      - services
+      - serviceaccounts
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [""]
+    resources:
+      - secrets
+    # Limited verbs on Secrets: never list-with-values cluster-wide, but get/create/patch
+    # of a known-named Secret is fine.
+    verbs: [get, create, update, patch]
+  - apiGroups: [apps]
+    resources:
+      - deployments
+      - replicasets
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [networking.k8s.io]
+    resources:
+      - ingresses
+    verbs: [get, list, watch, create, update, patch, delete]
+  # rollout status, log, exec, etc.
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - pods/status
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources:
+      - events
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: app-deployer
+  namespace: myapp-dev
+  labels:
+    app.kubernetes.io/name: app-deployer
+subjects:
+  - kind: ServiceAccount
+    name: app-deployer
+    namespace: arc-runners
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: app-deployer

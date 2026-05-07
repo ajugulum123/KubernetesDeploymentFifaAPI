@@ -1,0 +1,35 @@
+# Ingress for the dev API. Traefik (k3s default) terminates TLS here and forwards
+# plain HTTP to the Service. For local k3d development the host resolves via /etc/hosts:
+#   echo "127.0.0.1 fifa-api.dev.local" | sudo tee -a /etc/hosts
+# and the cluster maps localhost:8443 to cluster :443 (set in the k3d create command).
+#
+# In a public cloud this Ingress combines with cert-manager + Let's Encrypt to get a real cert.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fifa-api
+  namespace: myapp-dev
+  labels:
+    app.kubernetes.io/name: fifa-api
+    app.kubernetes.io/instance: dev
+  annotations:
+    # Traefik v3 native annotations
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - fifa-api.dev.local
+      secretName: fifa-api-tls
+  rules:
+    - host: fifa-api.dev.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: fifa-api
+                port:
+                  name: http

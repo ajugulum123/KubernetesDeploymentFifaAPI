@@ -1,0 +1,11 @@
+# ServiceAccount the runner pods use to talk to the Kubernetes API when deploying the app.
+# Lives in arc-runners (where runner pods run). The Role+RoleBinding for what this SA can
+# actually do live in each target namespace (myapp-dev, myapp-prod, myapp-pr-*).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-deployer
+  namespace: arc-runners
+  labels:
+    app.kubernetes.io/name: app-deployer
+    app.kubernetes.io/part-of: fifa-cicd-platform

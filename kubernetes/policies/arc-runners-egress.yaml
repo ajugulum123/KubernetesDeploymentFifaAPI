@@ -1,0 +1,86 @@
+# Default-deny ingress for arc-runners pods plus an explicit allow-list of egress
+# destinations: DNS, HTTPS to the internet (for GitHub, GHCR, npmjs), the
+# Kubernetes API, the in-cluster BuildKit and the in-cluster cache.
+#
+# Caveat: NetworkPolicy on stock Kubernetes does not support FQDN egress rules.
+# Tighter scoping (only the published GitHub IP CIDRs from api.github.com/meta)
+# would require Cilium or another CNI with FQDN policies. Documented as a
+# follow-up in docs/SECURITY.md.
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: arc-runners-egress
+  namespace: arc-runners
+spec:
+  # Apply to every pod in arc-runners (runner pods plus the listener pod).
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+
+  # Default-deny ingress (no rules listed means: deny all).
+  ingress: []
+
+  egress:
+    # DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+    # Kubernetes API. The kubernetes Service ClusterIP is typically 10.43.0.1
+    # on k3s. Adjust if your cluster CIDR differs.
+    - to:
+        - ipBlock:
+            cidr: 10.43.0.1/32
+      ports:
+        - protocol: TCP
+          port: 443
+
+    # In-cluster BuildKit
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: buildkit
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: buildkit
+      ports:
+        - protocol: TCP
+          port: 1234
+
+    # In-cluster MinIO (Actions cache)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cache
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: minio
+      ports:
+        - protocol: TCP
+          port: 9000
+
+    # HTTPS to the public internet for GitHub API, GHCR, npmjs.org and similar.
+    # We exclude RFC1918 ranges so this rule cannot be a side door into other
+    # cluster-internal services.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80

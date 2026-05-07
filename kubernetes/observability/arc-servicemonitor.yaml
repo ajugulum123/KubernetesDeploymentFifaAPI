@@ -1,0 +1,43 @@
+# Scrapes the ARC controller's metrics endpoint. The controller exposes /metrics
+# on port 8080 (default for the gha-runner-scale-set-controller chart).
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: arc-controller
+  namespace: arc-systems
+  labels:
+    app.kubernetes.io/name: arc-controller
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gha-rs-controller
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+  namespaceSelector:
+    matchNames: [arc-systems]
+---
+# Scrapes the runner listener pods. Each AutoscalingRunnerSet has a listener pod
+# that reports queue-depth metrics back to the controller. The controller exposes
+# them on its /metrics endpoint, but if you want per-listener telemetry, point
+# this at the listener Service when ARC adds one.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: arc-runner-pods
+  namespace: arc-runners
+  labels:
+    app.kubernetes.io/name: arc-runner-pods
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      actions.github.com/scale-set-name: fifa-runners
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+  namespaceSelector:
+    matchNames: [arc-runners]

@@ -1,0 +1,111 @@
+# Grafana dashboard delivered as a ConfigMap. The kube-prometheus-stack Grafana
+# sidecar discovers any ConfigMap labeled grafana_dashboard: "1" anywhere in the
+# cluster and loads its JSON dashboards automatically.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fifa-cicd-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  fifa-cicd.json: |
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "graphTooltip": 1,
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Runner pool: idle",
+          "id": 1,
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+          "targets": [
+            { "expr": "sum(gha_idle_runners)", "refId": "A" }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Runner pool: busy",
+          "id": 2,
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+          "targets": [
+            { "expr": "sum(gha_busy_runners)", "refId": "A" }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Job queue depth",
+          "id": 3,
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+          "targets": [
+            { "expr": "sum(gha_assigned_jobs - gha_running_jobs)", "refId": "A" }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Runner pool over time",
+          "id": 4,
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+          "targets": [
+            { "expr": "sum(gha_idle_runners)", "legendFormat": "idle", "refId": "A" },
+            { "expr": "sum(gha_busy_runners)", "legendFormat": "busy", "refId": "B" },
+            { "expr": "sum(gha_assigned_jobs - gha_running_jobs)", "legendFormat": "queued", "refId": "C" }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "fifa-api: requests / sec by status",
+          "id": 5,
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+          "targets": [
+            { "expr": "sum by (status_code) (rate(http_request_duration_seconds_count{job=\"fifa-api\"}[1m]))", "legendFormat": "{{ status_code }}", "refId": "A" }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "fifa-api: latency p50/p99 (s)",
+          "id": 6,
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+          "targets": [
+            { "expr": "histogram_quantile(0.5,  sum by (le) (rate(http_request_duration_seconds_bucket{job=\"fifa-api\"}[1m])))", "legendFormat": "p50", "refId": "A" },
+            { "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"fifa-api\"}[1m])))", "legendFormat": "p99", "refId": "B" }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "fifa-api: 5xx error rate",
+          "id": 7,
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+          "targets": [
+            { "expr": "sum(rate(http_request_duration_seconds_count{job=\"fifa-api\",status_code=~\"5..\"}[1m])) / sum(rate(http_request_duration_seconds_count{job=\"fifa-api\"}[1m]))", "legendFormat": "5xx ratio", "refId": "A" }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "fifa-api: heap (MB)",
+          "id": 8,
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+          "targets": [
+            { "expr": "fifa_api_nodejs_heap_size_used_bytes / 1024 / 1024", "legendFormat": "heap used (MB)", "refId": "A" }
+          ]
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 39,
+      "tags": ["fifa-api", "arc", "cicd"],
+      "time": { "from": "now-1h", "to": "now" },
+      "timepicker": {},
+      "timezone": "",
+      "title": "FIFA API and CI/CD platform",
+      "uid": "fifa-cicd",
+      "version": 1
+    }

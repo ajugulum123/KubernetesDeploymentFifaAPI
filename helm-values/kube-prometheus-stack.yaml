@@ -1,0 +1,110 @@
+# kube-prometheus-stack values. Release name 'monitoring', namespace 'monitoring'.
+# Apply with:
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm repo update
+#   helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
+#     --namespace monitoring --create-namespace \
+#     --values KubernetesDeploymentFifaAPI/helm-values/kube-prometheus-stack.yaml
+
+defaultRules:
+  create: true
+  rules:
+    alertmanager: true
+    general: true
+    k8s: true
+    kubeApiserverAvailability: true
+    kubeApiserverError: true
+    kubeApiserverSlos: true
+    kubelet: true
+    kubernetesApps: true
+    kubernetesResources: true
+    kubernetesSystem: true
+    network: true
+    node: true
+    nodeExporterAlerting: true
+    nodeExporterRecording: true
+    prometheus: true
+    prometheusOperator: true
+
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    retentionSize: 8GiB
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "768Mi"
+      limits:
+        cpu: "1"
+        memory: "2Gi"
+    # Discover ServiceMonitors and PrometheusRules cluster-wide. We label them
+    # with release: monitoring so they get picked up.
+    serviceMonitorSelector: {}
+    serviceMonitorNamespaceSelector: {}
+    podMonitorSelector: {}
+    podMonitorNamespaceSelector: {}
+    ruleSelector: {}
+    ruleNamespaceSelector: {}
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 10Gi
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "64Mi"
+      limits:
+        cpu: "200m"
+        memory: "256Mi"
+
+grafana:
+  enabled: true
+  adminPassword: change-me-on-first-login
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+    datasources:
+      enabled: true
+      label: grafana_datasource
+      labelValue: "1"
+      searchNamespace: ALL
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      cpu: "300m"
+      memory: "512Mi"
+  service:
+    type: ClusterIP
+  # Expose Grafana behind Traefik on grafana.dev.local. Add to /etc/hosts.
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts:
+      - grafana.dev.local
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls: "true"
+    tls:
+      - hosts: [grafana.dev.local]
+        secretName: grafana-tls
+
+# Disable the bits we do not need on a single-node k3d for now.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+kubeEtcd:
+  enabled: false

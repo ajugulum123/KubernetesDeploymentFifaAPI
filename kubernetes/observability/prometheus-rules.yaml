@@ -1,0 +1,76 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: fifa-cicd-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: arc-runners
+      interval: 30s
+      rules:
+        - alert: ARCQueueDepthHigh
+          # gha_busy_runners and gha_idle_runners come from the ARC controller
+          # /metrics. Customize once you confirm the exact metric names with
+          # `kubectl port-forward -n arc-systems svc/arc-gha-rs-controller 8080:8080`
+          # and curl /metrics.
+          expr: |
+            sum by (scale_set_name) (
+              gha_assigned_jobs - gha_running_jobs
+            ) > 5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Job queue is backing up for scale set {{ $labels.scale_set_name }}"
+            description: |
+              {{ $value }} jobs are queued and not yet picked up after 5 minutes.
+              Check the ARC controller and consider raising maxRunners.
+
+        - alert: ARCControllerDown
+          expr: up{job="arc-controller"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "ARC controller is down"
+            description: "The ARC controller has been unreachable for 2 minutes. CI/CD jobs will not be scheduled."
+
+    - name: fifa-api
+      interval: 30s
+      rules:
+        - alert: FifaAPIErrorRateHigh
+          expr: |
+            (
+              sum by (namespace) (rate(http_request_duration_seconds_count{job="fifa-api",status_code=~"5.."}[5m]))
+              /
+              sum by (namespace) (rate(http_request_duration_seconds_count{job="fifa-api"}[5m]))
+            ) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "5xx error rate above 5% for fifa-api in {{ $labels.namespace }}"
+            description: "Error rate is {{ $value | humanizePercentage }} for the past 5 minutes."
+
+        - alert: FifaAPILatencyP99High
+          expr: |
+            histogram_quantile(
+              0.99,
+              sum by (le, namespace) (rate(http_request_duration_seconds_bucket{job="fifa-api"}[5m]))
+            ) > 1.0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "P99 latency above 1s for fifa-api in {{ $labels.namespace }}"
+            description: "P99 is {{ $value }}s for the past 5 minutes."
+
+        - alert: FifaAPIDown
+          expr: up{job="fifa-api"} == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "fifa-api scrape target is down in {{ $labels.namespace }}"

@@ -7,7 +7,7 @@
 *.swp
 *~
 
-# Local secrets — never commit
+# Local secrets, never commit
 .env
 .env.*
 !.env.example

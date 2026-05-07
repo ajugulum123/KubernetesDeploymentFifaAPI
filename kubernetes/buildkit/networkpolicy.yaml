@@ -1,0 +1,25 @@
+# Only the arc-runners namespace can reach the BuildKit daemon. All other ingress is denied.
+# Egress is unrestricted at this layer because BuildKit needs to:
+#   - resolve DNS to talk to GHCR
+#   - reach api.github.com and ghcr.io for image push
+#   - reach upstream registries (docker.io, etc) for base image pulls
+# Egress restriction is applied at the runner namespace level (see kubernetes/policies/).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: buildkitd-allow-arc-runners
+  namespace: buildkit
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: buildkit
+      app.kubernetes.io/component: daemon
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: arc-runners
+      ports:
+        - protocol: TCP
+          port: 1234

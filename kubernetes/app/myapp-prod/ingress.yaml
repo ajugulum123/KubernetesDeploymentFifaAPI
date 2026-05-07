@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fifa-api
+  namespace: myapp-prod
+  labels:
+    app.kubernetes.io/name: fifa-api
+    app.kubernetes.io/instance: prod
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    # When cert-manager is in play, swap the secret for a real ACME-issued cert.
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - fifa-api.example.com
+      secretName: fifa-api-tls
+  rules:
+    - host: fifa-api.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: fifa-api
+                port:
+                  name: http

@@ -1,0 +1,111 @@
+# Helm values for the gha-runner-scale-set chart, release name 'fifa-runners'.
+#
+# Apply with:
+#   helm upgrade fifa-runners \
+#     --namespace arc-runners \
+#     --values KubernetesDeploymentFifaAPI/helm-values/fifa-runners.yaml \
+#     oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set
+#
+# Initial install used --set flags to bootstrap. From here on we use this file as the
+# single source of truth so 'helm get values fifa-runners -n arc-runners' shows
+# something meaningful.
+
+# Repository the runners listen for jobs on.
+githubConfigUrl: https://github.com/ajugulum123/KubernetesDeploymentFifaAPI
+
+# Reference the pre-created Secret by name. The Secret holds the GitHub App ID,
+# Installation ID and private key. Created via:
+#   kubectl create secret generic arc-github-app-secret -n arc-runners \
+#     --from-literal=github_app_id=... \
+#     --from-literal=github_app_installation_id=... \
+#     --from-file=github_app_private_key=path/to/key.pem
+githubConfigSecret: arc-github-app-secret
+
+# Autoscaling. The chart's queue-depth-aware autoscaler lets us drop to 0 when no
+# jobs are running and burst up to 5 in parallel when needed.
+minRunners: 0
+maxRunners: 5
+
+# Each runner pod is ephemeral: ARC creates the pod, the runner picks up exactly
+# one job, then the pod terminates. This is the ARC default; calling it out here
+# so it is visible in 'helm get values'.
+runnerScaleSetName: fifa-runners
+
+# Pod template for each runner. ServiceAccount + custom image + resources + tools.
+template:
+  spec:
+    serviceAccountName: app-deployer
+    # The kubectl-rbac story for app-deployer lives in
+    # kubernetes/rbac/app-deployer-sa.yaml plus per-namespace
+    # kubernetes/app/<env>/rbac.yaml.
+
+    containers:
+      - name: runner
+        # Custom image with kubectl, helm, buildctl, docker CLI, jq, yq, Node 20.
+        # Built and pushed by .github/workflows/build-runner-image.yml.
+        # Pin to a SHA tag in production for reproducibility. Use :latest while iterating.
+        image: ghcr.io/ajugulum123/fifa-runner:latest
+        imagePullPolicy: Always
+
+        # Resource requests/limits keep scheduling predictable. Tune based on observed
+        # job load. Builds and tests for FIFA_API_APP comfortably fit in 1 CPU / 2Gi.
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+            ephemeral-storage: "2Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+            ephemeral-storage: "8Gi"
+
+        # Don't auto-mount the SA token if not using it (we are using it for
+        # app-deployer kubectl, so this stays default true).
+        env:
+          - name: BUILDKIT_HOST
+            value: tcp://buildkitd.buildkit.svc.cluster.local:1234
+          - name: ACTIONS_CACHE_URL_ENDPOINT
+            value: minio.cache.svc.cluster.local
+          - name: ACTIONS_CACHE_URL_BUCKET
+            value: actions-cache
+          - name: ACTIONS_CACHE_URL_PORT
+            value: "9000"
+
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop: [ALL]
+
+    # Spread runners across nodes so a single node going down does not lose all
+    # in-flight jobs.
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  actions.github.com/scale-set-name: fifa-runners
+              topologyKey: kubernetes.io/hostname
+
+    # Tolerations example for spot/preemptible nodes. Comment out on local k3d.
+    # tolerations:
+    #   - key: cloud.google.com/gke-spot
+    #     operator: Equal
+    #     value: "true"
+    #     effect: NoSchedule
+
+# Listener pod (the controller agent that polls GitHub for queued jobs).
+# Stays up even when minRunners=0 so the controller can react instantly.
+listenerTemplate:
+  spec:
+    containers:
+      - name: listener
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"

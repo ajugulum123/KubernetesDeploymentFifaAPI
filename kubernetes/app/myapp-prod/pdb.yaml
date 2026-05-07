@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: fifa-api
+  namespace: myapp-prod
+  labels:
+    app.kubernetes.io/name: fifa-api
+    app.kubernetes.io/instance: prod
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fifa-api
+      app.kubernetes.io/instance: prod

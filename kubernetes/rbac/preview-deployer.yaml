@@ -1,0 +1,44 @@
+# PR-preview deployments need to create and delete namespaces. Kubernetes RBAC has no
+# native way to scope this to a name pattern (e.g. "only myapp-pr-*"), so we grant the
+# minimum cluster-scope verbs needed and audit usage. Tighten with an admission webhook
+# (Kyverno or OPA) if this becomes a real concern.
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: preview-deployer
+  labels:
+    app.kubernetes.io/name: preview-deployer
+    app.kubernetes.io/part-of: fifa-cicd-platform
+rules:
+  # Manage namespaces for PR previews.
+  - apiGroups: [""]
+    resources: [namespaces]
+    verbs: [get, list, create, delete]
+  # Inside any namespace, the same verbs as app-deployer. Wildcards because preview
+  # namespaces are temporary and we are willing to trade strict scoping for ergonomics.
+  - apiGroups: [""]
+    resources: [configmaps, services, serviceaccounts, secrets, pods, pods/log, events]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [apps]
+    resources: [deployments, replicasets]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses, networkpolicies]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [rbac.authorization.k8s.io]
+    resources: [roles, rolebindings]
+    verbs: [get, list, watch, create, update, patch, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: preview-deployer
+subjects:
+  - kind: ServiceAccount
+    name: app-deployer
+    namespace: arc-runners
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: preview-deployer

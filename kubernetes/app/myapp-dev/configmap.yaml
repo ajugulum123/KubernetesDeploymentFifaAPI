@@ -1,0 +1,22 @@
+# Non-sensitive runtime configuration. Sensitive bits (JWT secrets, admin password)
+# live in the Secret. Both are wired into the Pod via envFrom on the Deployment.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fifa-api-config
+  namespace: myapp-dev
+  labels:
+    app.kubernetes.io/name: fifa-api
+    app.kubernetes.io/instance: dev
+data:
+  NODE_ENV: "production"
+  DISABLE_INLINE_TLS: "true"
+  PORT: "4000"
+  GRAPHQL_MAX_DEPTH: "6"
+  DISABLE_INTROSPECTION: "true"
+  RATE_LIMIT_WINDOW_MS: "60000"
+  RATE_LIMIT_MAX: "100"
+  CORS_ORIGINS: "https://fifa-api.dev.local"
+  JWT_ACCESS_EXPIRES_IN: "15m"
+  JWT_REFRESH_EXPIRES_IN: "7d"
+  CSV_PATH: "./dataset/player_stats.csv"
